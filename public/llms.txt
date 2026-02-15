@@ -1,0 +1,49 @@
+# Project: Pat Lib Online
+> LLM-first web design and pattern library with Prompt Mode and Code Mode outputs.
+
+## Start Here
+
+- Root: `https://pat-lib-online.vercel.app/`
+- LLM index page: `https://pat-lib-online.vercel.app/llm`
+- Machine index endpoint: `https://pat-lib-online.vercel.app/api/llm/index`
+- Sitemap: `https://pat-lib-online.vercel.app/sitemap.xml`
+
+## Retrieval Modes
+
+### Prompt Mode
+Use when the LLM should generate or refine prompts for an AI coder.
+
+1. Read `/api/llm/playbooks` and select an industry playbook.
+2. Read `/api/llm/playbooks/[slug]` for `modes.prompt`.
+3. Pull pattern prompt examples from `/api/llm/patterns/[id]`.
+4. Pull guardrails from `/api/llm/references/[id]` (`core-rules`, `pattern-select`, `prompt-vocabulary`).
+
+### Code Mode
+Use when the LLM is the coder and should integrate components directly.
+
+1. Read `/api/llm/patterns` and choose required patterns.
+2. Read `/api/llm/patterns/[id]` for `modes.code.implementation`.
+3. Pull implementation/CSS constraints from `/api/llm/references/[id]` (`implementation-blocks`, `css-bridge`).
+4. Optionally use `/api/llm/playbooks/[slug]` for integration order.
+
+## Human Navigation
+
+- `/library`: pattern catalog with Prompt vs Code tabs
+- `/playbooks`: industry-specific integration packs (dentist, restaurant, contractor)
+- `/reference`: indexed guidance from `/lib-files`
+
+## API Endpoints
+
+- `/api/llm/index`
+- `/api/llm/patterns`
+- `/api/llm/patterns/[id]`
+- `/api/llm/playbooks`
+- `/api/llm/playbooks/[slug]`
+- `/api/llm/references`
+- `/api/llm/references/[id]`
+
+## Data Notes
+
+- Pattern IDs are stable (example: `1.4`, `10.2`).
+- `modes.prompt` contains prompt-ready guidance.
+- `modes.code` contains code-ready integration content.

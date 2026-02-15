@@ -1,0 +1,18 @@
+# User-Agent: *
+Allow: /
+
+# Focused AI Crawlers
+User-Agent: GPTBot
+Allow: /
+
+User-Agent: Claude-Web
+Allow: /
+
+User-Agent: Google-Extended
+Allow: /
+
+User-Agent: PerplexityBot
+Allow: /
+
+# Sitemap
+Sitemap: https://pat-lib-online.vercel.app/sitemap.xml
