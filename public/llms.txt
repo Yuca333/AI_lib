@@ -1,68 +1,67 @@
 # Pat Lib Online
-> LLM-first UI pattern library with prompt-mode and code-mode retrieval contracts.
+> LLM-first UI pattern library with deterministic retrieval contracts and lossless raw artifact transport.
 
 ## Canonical Entry Points
 
-- Root: `https://pat-lib-online.vercel.app/`
-- LLM UI index: `https://pat-lib-online.vercel.app/llm`
-- Machine index: `https://pat-lib-online.vercel.app/api/llm/index`
-- Root JSON index: `https://pat-lib-online.vercel.app/llm-index.json`
-- Retrieval API: `https://pat-lib-online.vercel.app/api/llm/search`
-- Contracts API: `https://pat-lib-online.vercel.app/api/llm/contracts`
-- Sitemap: `https://pat-lib-online.vercel.app/sitemap.xml`
+- Root: `/`
+- LLM UI index: `/llm`
+- Machine index: `/api/llm/index`
+- Root JSON index: `/llm-index.json`
+- Contracts API: `/api/llm/contracts`
+- Health API: `/api/llm/health`
 
 ## Retrieval Strategy
 
-### Fast Route (query-driven)
-1. Call `/api/llm/search?q=<task>&scope=all&mode=prompt|code`.
-2. Read top `patterns`, `playbooks`, and `references` results.
-3. Resolve selected entries with detail endpoints.
+### Minimal-Token Route (recommended)
+1. Read `/api/llm/index?format=compact`.
+2. Query `/api/llm/search?q=<task>&scope=all&mode=prompt|code&format=compact`.
+3. Resolve only selected records with projected fields:
+   - `/api/llm/patterns/{id}?packOnly=true&fields=id,name,objective,modes.code.implementationRawHref,modes.code.implementationHash`
+   - `/api/llm/playbooks/{slug}?packOnly=true`
+4. Pull only needed reference chunks:
+   - `/api/llm/references/{id}/sections`
+   - `/api/llm/references/{id}/sections/{sectionId}`
 
 ### Deterministic Route (full control)
-1. Read `/api/llm/index` for taxonomy + endpoint map.
-2. Filter `/api/llm/patterns` using `q`, `industry`, `category`, `tag`, `mode`.
-3. Read `/api/llm/patterns/[id]` for:
-   - `modes.prompt.pack` (context, constraints, checks, failure handling)
-   - `modes.code.pack` (implementation checklist + compatibility rules)
-4. Read `/api/llm/playbooks/[slug]` for integrated prompt/code plans.
-5. Read `/api/llm/references/[id]` for guardrails and technical constraints.
+1. `/api/llm/index`
+2. `/api/llm/patterns` + filters (`q`, `mode`, `industry`, `category`, `tag`, `limit`)
+3. `/api/llm/playbooks`
+4. `/api/llm/references`
+5. `/api/llm/contracts`
+
+## Lossless Raw Artifact Endpoints
+
+- Pattern TSX source: `/api/llm/raw/patterns/{id}.tsx`
+- Reference markdown source: `/api/llm/raw/references/{id}.md`
+
+Raw endpoints return `text/plain` without HTML sanitization.
+
+## Query Controls (Token Efficiency)
+
+Supported on collection/detail retrieval endpoints:
+- `format=full|compact`
+- `packOnly=true|false` (alias for `format=compact`)
+- `fields=comma,separated,projection`
 
 ## Stable Identifiers
 
-- Human ID: `1.4`
-- Canonical ID: `patlib.pattern.1.4`
-- Canonical URL: `/library/1.4`
+- Human pattern ID: `1.4`
+- Canonical pattern ID: `patlib.pattern.1.4`
+- Canonical route: `/api/llm/patterns/1.4`
 
-Both ID forms can be used with `/api/llm/patterns/[id]`.
+## Prompt Composer
 
-## Query Parameters
+- Compose builder-ready lovable prompt:
+  - `POST /api/llm/compose/lovable`
+  - body: `playbookSlug`, `selectedPatternIds[]`, `variables`
+  - output: `prompt` + `assumptions`
 
-### `/api/llm/patterns`
-- `q`: free-text query
-- `mode`: `prompt` or `code`
-- `industry`: industry keyword
-- `category`: category keyword
-- `tag`: repeatable or comma-separated tag
-- `limit`: max records
-
-### `/api/llm/playbooks`
-- `q`, `industry`, `mode`, `limit`
-
-### `/api/llm/references`
-- `q`, `mode`, `limit`
-
-### `/api/llm/search`
-- `q`, `scope` (`all|patterns|playbooks|references`), `mode`, `industry`, `category`, `tag`, `limit`
-
-## Output Contracts
-
-- `/api/llm/contracts` provides field-level contract expectations for:
-  - pattern summary/detail
-  - playbook detail
-  - reference detail
+The composer enforces:
+- no invented claims
+- no placeholder output
 
 ## Human Navigation
 
-- `/library`: full pattern catalog
-- `/playbooks`: industry playbooks
-- `/reference`: indexed markdown guides from `lib-files/`
+- `/library`
+- `/playbooks`
+- `/reference`

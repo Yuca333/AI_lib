@@ -33,6 +33,10 @@ function cleanMarkdown(lines: string[]): string {
     return normalized.join('\n').trim();
 }
 
+function joinRawFence(lines: string[]): string {
+    return lines.map((line) => line.replace(/\r$/, '')).join('\n');
+}
+
 function extractFirstMeaningfulSentence(text: string): string {
     const candidates: string[] = [];
     let inFence = false;
@@ -125,7 +129,7 @@ export function parsePatterns(filePath: string): Pattern[] {
             extractFirstMeaningfulSentence(usageNotes) ||
             `Implementation guidance for ${currentPattern.name}.`;
         currentPattern.usageNotes = usageNotes;
-        currentPattern.code = (currentPattern.code ?? '').trim();
+        currentPattern.code = currentPattern.code ?? '';
         currentPattern.promptExample = (currentPattern.promptExample ?? '').trim();
         if (!currentPattern.promptExample) {
             currentPattern.promptExample = buildPromptFallback(
@@ -154,8 +158,9 @@ export function parsePatterns(filePath: string): Pattern[] {
             // Finalize an open fence before starting a new pattern.
             if (inFence && currentPattern) {
                 const blockContent = cleanMarkdown(fenceBuffer);
+                const rawBlockContent = joinRawFence(fenceBuffer);
                 if (fenceTarget === 'code' && !currentPattern.code) {
-                    currentPattern.code = blockContent;
+                    currentPattern.code = rawBlockContent;
                     parsePhase = 'postCode';
                 } else if (fenceTarget === 'prompt' && !currentPattern.promptExample) {
                     currentPattern.promptExample = blockContent;
@@ -198,8 +203,9 @@ export function parsePatterns(filePath: string): Pattern[] {
         if (inFence) {
             if (line.trim() === '```') {
                 const blockContent = cleanMarkdown(fenceBuffer);
+                const rawBlockContent = joinRawFence(fenceBuffer);
                 if (fenceTarget === 'code' && !currentPattern.code) {
-                    currentPattern.code = blockContent;
+                    currentPattern.code = rawBlockContent;
                     parsePhase = 'postCode';
                 } else if (fenceTarget === 'prompt' && !currentPattern.promptExample) {
                     currentPattern.promptExample = blockContent;
@@ -267,8 +273,9 @@ export function parsePatterns(filePath: string): Pattern[] {
     // Finalize the last open fence and pattern.
     if (inFence && currentPattern) {
         const blockContent = cleanMarkdown(fenceBuffer);
+        const rawBlockContent = joinRawFence(fenceBuffer);
         if (fenceTarget === 'code' && !currentPattern.code) {
-            currentPattern.code = blockContent;
+            currentPattern.code = rawBlockContent;
         } else if (fenceTarget === 'prompt' && !currentPattern.promptExample) {
             currentPattern.promptExample = blockContent;
         } else if (blockContent) {

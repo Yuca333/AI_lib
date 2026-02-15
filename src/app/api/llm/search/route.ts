@@ -1,5 +1,10 @@
 import { jsonError, jsonWithMeta } from '@/lib/api-response';
 import { getPatternLibrary, getPlaybooks, getReferenceLibrary } from '@/lib/library-knowledge';
+import {
+  applyFieldProjection,
+  getRetrievalResponseFormat,
+  parseFieldProjection,
+} from '@/lib/llm-response-controls';
 import { searchPatterns, searchPlaybooks, searchReferences } from '@/lib/llm-retrieval';
 
 export const revalidate = 1800;
@@ -12,9 +17,39 @@ function parseScope(value: string | null): Scope {
   return 'all';
 }
 
+function normalizeScore(score: number, maxScore: number): number {
+  if (maxScore <= 0) return 0.5;
+  const normalized = score / maxScore;
+  return Math.max(0, Math.min(1, Math.round(normalized * 100) / 100));
+}
+
+function mapReason(reason: string): string {
+  const map: Record<string, string> = {
+    name: 'Pattern name directly matches the query intent.',
+    tags: 'Pattern taxonomy tags align with the requested design goals.',
+    intent: 'Intent classification overlap detected for this task.',
+    industry: 'Industry context overlap detected in pattern profile.',
+    description: 'Pattern description contains relevant task language.',
+    'industry-filter': 'Industry filter matched this pattern.',
+    'tag-filter': 'Requested tag matched this pattern.',
+    category: 'Category filter matched this pattern.',
+    'prompt-mode': 'Prompt mode requested; prompt coverage prioritized.',
+    'code-mode': 'Code mode requested; implementation readiness prioritized.',
+    'experimental-penalty': 'Pattern is marked experimental and ranking was reduced.',
+  };
+
+  return map[reason] || `Retrieval signal: ${reason}`;
+}
+
+function splitDependencies(dependencies: string[]): string[] {
+  return dependencies.length > 0 ? dependencies : ['none'];
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
+    const format = getRetrievalResponseFormat(url.searchParams);
+    const fields = parseFieldProjection(url.searchParams);
     const q = url.searchParams.get('q')?.trim() || '';
     const scope = parseScope(url.searchParams.get('scope'));
     const mode = url.searchParams.get('mode');
@@ -27,7 +62,7 @@ export async function GET(request: Request) {
     const playbooks = getPlaybooks();
     const references = getReferenceLibrary();
 
-    const patternResults =
+    const patternSearch =
       scope === 'all' || scope === 'patterns'
         ? searchPatterns(patterns, {
             query: q,
@@ -36,20 +71,33 @@ export async function GET(request: Request) {
             industry,
             tags: tag ? [tag] : undefined,
             limit,
-          }).map((entry) => ({
-            id: entry.pattern.id,
-            canonicalId: entry.pattern.taxonomy.canonicalId,
-            type: 'pattern',
-            title: entry.pattern.name,
-            summary: entry.pattern.description,
-            category: entry.pattern.category,
-            tags: entry.pattern.taxonomy.tags,
-            href: `/api/llm/patterns/${entry.pattern.id}`,
-            ui: `/library/${entry.pattern.id}`,
-            score: entry.score,
-            reasons: entry.reasons,
-          }))
+          })
         : [];
+
+    const maxScore = patternSearch.reduce((max, item) => Math.max(max, item.score), 0);
+
+    const results = patternSearch.map(({ pattern, score, reasons }) => ({
+      pattern_id: pattern.id,
+      name: pattern.name,
+      relevance_score: normalizeScore(score, maxScore),
+      match_reasons: reasons.map(mapReason),
+      implementation_complexity: pattern.llmMetadata.meta.implementation_complexity,
+      code_blocks: {
+        html: pattern.llmMetadata.code_blocks.html,
+        css: pattern.llmMetadata.code_blocks.css,
+        js: pattern.llmMetadata.code_blocks.js,
+      },
+      prompt_template: pattern.llmMetadata.prompt_templates.claude_gpt,
+      required_assets: splitDependencies(pattern.llmMetadata.meta.dependencies),
+      estimated_tokens: pattern.llmMetadata.meta.estimated_tokens,
+      ai_success_rate: pattern.llmMetadata.meta.ai_success_rate,
+      selection_criteria: pattern.llmMetadata.selection_criteria,
+      compatibility: pattern.llmMetadata.compatibility,
+      links: {
+        detail: `/api/llm/patterns/${pattern.id}`,
+        ui: `/library/${pattern.id}`,
+      },
+    }));
 
     const playbookResults =
       scope === 'all' || scope === 'playbooks'
@@ -60,14 +108,12 @@ export async function GET(request: Request) {
             limit,
           }).map((entry) => ({
             id: entry.playbook.slug,
-            type: 'playbook',
             title: entry.playbook.title,
-            summary: entry.playbook.summary,
             industry: entry.playbook.industry,
-            href: `/api/llm/playbooks/${entry.playbook.slug}`,
-            ui: `/playbooks/${entry.playbook.slug}`,
             score: entry.score,
             reasons: entry.reasons,
+            href: `/api/llm/playbooks/${entry.playbook.slug}`,
+            ui: `/playbooks/${entry.playbook.slug}`,
           }))
         : [];
 
@@ -82,32 +128,96 @@ export async function GET(request: Request) {
             limit,
           }).map((entry) => ({
             id: entry.reference.id,
-            type: 'reference',
             title: entry.reference.title,
-            summary: entry.reference.summary,
-            href: `/api/llm/references/${entry.reference.id}`,
-            ui: `/reference/${entry.reference.id}`,
             score: entry.score,
             reasons: entry.reasons,
+            href: `/api/llm/references/${entry.reference.id}`,
+            ui: `/reference/${entry.reference.id}`,
           }))
         : [];
 
-    return jsonWithMeta({
+    const totalCount =
+      scope === 'patterns'
+        ? results.length
+        : scope === 'playbooks'
+        ? playbookResults.length
+        : scope === 'references'
+        ? referenceResults.length
+        : results.length + playbookResults.length + referenceResults.length;
+
+    const supplemental =
+      scope === 'patterns'
+        ? undefined
+        : {
+            playbooks: playbookResults,
+            references: referenceResults,
+          };
+
+    const fullPayload = {
       query: q,
       scope,
       mode: mode || null,
-      count: patternResults.length + playbookResults.length + referenceResults.length,
-      results: {
-        patterns: patternResults,
+      count: totalCount,
+      results,
+      supplemental,
+      schema: {
+        result_shape: {
+          pattern_id: 'string',
+          name: 'string',
+          relevance_score: 'number(0..1)',
+          match_reasons: 'string[]',
+          implementation_complexity: 'low|medium|high',
+          code_blocks: { html: 'string', css: 'string', js: 'string' },
+          prompt_template: 'string',
+          required_assets: 'string[]',
+          estimated_tokens: 'number',
+        },
+      },
+      nextActions: [
+        'Select the top result with acceptable estimated_tokens and ai_success_rate.',
+        'Open /api/llm/patterns/:id for full prompt templates and troubleshooting metadata.',
+        'Apply fallback alternatives when selection_criteria avoid_when conditions are present.',
+      ],
+      legacy_results: {
+        patterns: results.map((item) => ({
+          id: item.pattern_id,
+          title: item.name,
+          score: item.relevance_score,
+          href: item.links.detail,
+          ui: item.links.ui,
+        })),
         playbooks: playbookResults,
         references: referenceResults,
       },
-      nextActions: [
-        'Read top pattern result detail for full prompt/code packs.',
-        'Read playbook detail for integration sequence if industry match is high.',
-        'Read reference docs for guardrails before generating final output.',
-      ],
-    });
+      retrievalControls: {
+        format: 'full|compact',
+        packOnly: 'true|false',
+        fields: 'comma-separated projection',
+      },
+    } satisfies Record<string, unknown>;
+
+    const compactPayload = {
+      query: q,
+      scope,
+      mode: mode || null,
+      count: totalCount,
+      results: results.map((item) => ({
+        pattern_id: item.pattern_id,
+        name: item.name,
+        relevance_score: item.relevance_score,
+        match_reasons: item.match_reasons,
+        implementation_complexity: item.implementation_complexity,
+        estimated_tokens: item.estimated_tokens,
+        ai_success_rate: item.ai_success_rate,
+        links: item.links,
+      })),
+      supplemental,
+      nextActions: fullPayload.nextActions,
+      retrievalControls: fullPayload.retrievalControls,
+    } satisfies Record<string, unknown>;
+
+    const payload = format === 'compact' ? compactPayload : fullPayload;
+    return jsonWithMeta(applyFieldProjection(payload, fields));
   } catch (error) {
     console.error('Failed to perform retrieval search', error);
     return jsonError('Failed to perform retrieval search');

@@ -112,6 +112,9 @@ export default function RootLayout({
                   <Link href="/playbooks">Playbooks</Link>
                   <Link href="/reference">Reference</Link>
                   <Link href="/llm">LLM Index</Link>
+                  <Link href="/anti-patterns">Anti-Patterns</Link>
+                  <Link href="/examples">Examples</Link>
+                  <Link href="/lovable-optimized">Lovable</Link>
                 </nav>
             </header>
             {children}

@@ -57,6 +57,36 @@ export default function LlmPage() {
                         <li><Link href="/llms.txt">/llms.txt</Link></li>
                     </ul>
                 </section>
+
+                <section className="bg-white border border-gray-200 rounded-xl p-6">
+                    <h2 className="text-xl font-bold mb-3">`/api/llm/search` Response Schema</h2>
+                    <p className="text-sm text-gray-700 mb-4">
+                        The search endpoint returns ranked pattern objects with implementation, prompting, and compatibility metadata.
+                    </p>
+                    <pre className="text-xs bg-gray-950 text-sky-200 rounded-md p-4 overflow-x-auto whitespace-pre-wrap">{`{
+  "query": "hero section for dentist",
+  "results": [
+    {
+      "pattern_id": "1.3",
+      "name": "CutoutHero",
+      "relevance_score": 0.94,
+      "match_reasons": [
+        "Industry context overlap detected in pattern profile.",
+        "Pattern taxonomy tags align with the requested design goals."
+      ],
+      "implementation_complexity": "medium",
+      "code_blocks": {
+        "html": "...",
+        "css": "...",
+        "js": "..."
+      },
+      "prompt_template": "Create a cutout hero featuring ...",
+      "required_assets": ["cutout-subject-image"],
+      "estimated_tokens": 450
+    }
+  ]
+}`}</pre>
+                </section>
             </main>
         </div>
     );

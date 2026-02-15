@@ -104,8 +104,13 @@ const requiredLlmEndpoints = [
   '/api/llm/patterns',
   '/api/llm/playbooks',
   '/api/llm/references',
+  '/api/llm/references/{id}/sections',
   '/api/llm/search',
   '/api/llm/contracts',
+  '/api/llm/health',
+  '/api/llm/compose/lovable',
+  '/api/llm/raw/patterns/{id}.tsx',
+  '/api/llm/raw/references/{id}.md',
 ];
 for (const endpoint of requiredLlmEndpoints) {
   if (!llmsDoc.includes(endpoint)) {

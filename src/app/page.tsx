@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { elements } from "@/lib/elements";
 import { getPatternLibrary, getPlaybooks } from "@/lib/library-knowledge";
+import { FeaturedPatternCard } from "@/components/library/featured-pattern-card";
 
 export default function Home() {
   const patterns = getPatternLibrary();
@@ -17,7 +18,7 @@ export default function Home() {
         <p className="text-slate-200 max-w-3xl mb-6">
           This site is optimized so an LLM can quickly decide what to use, then either generate a prompt blueprint or integrate code directly.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Link href="/library" className="bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg px-4 py-3 text-sm">
             Browse Pattern Library
           </Link>
@@ -29,6 +30,15 @@ export default function Home() {
           </Link>
           <Link href="/llm" className="bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg px-4 py-3 text-sm">
             LLM API Entry
+          </Link>
+          <Link href="/anti-patterns" className="bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg px-4 py-3 text-sm">
+            Anti-Patterns
+          </Link>
+          <Link href="/examples" className="bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg px-4 py-3 text-sm">
+            Real-World Examples
+          </Link>
+          <Link href="/lovable-optimized" className="bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg px-4 py-3 text-sm">
+            Lovable Optimization
           </Link>
         </div>
       </section>
@@ -56,17 +66,36 @@ export default function Home() {
         <h2 className="text-2xl font-bold mb-6 border-b pb-2">Featured Patterns</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {featuredPatterns.map((pattern) => (
-            <article key={pattern.id} className="border p-4 rounded-lg bg-white">
-              <h3 className="text-lg font-semibold mb-2">
-                <Link href={`/library/${pattern.id}`} className="hover:underline">
-                  {pattern.name}
-                </Link>
-              </h3>
-              <p className="text-sm text-gray-600 mb-2 line-clamp-3">{pattern.description}</p>
-              <p className="text-xs text-gray-500">{pattern.category}</p>
-            </article>
+            <FeaturedPatternCard key={pattern.id} pattern={pattern} />
           ))}
         </div>
+      </section>
+
+      <section className="bg-white border border-gray-200 rounded-xl p-6">
+        <h2 className="text-2xl font-bold mb-2">AI Utility Add-ons</h2>
+        <p className="text-sm text-gray-700 mb-4">
+          Use these routes to improve first-draft quality and tool-specific execution.
+        </p>
+        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+          <li>
+            <Link className="text-blue-600 hover:underline" href="/anti-patterns">
+              /anti-patterns
+            </Link>{" "}
+            for negative examples and banned generic copy.
+          </li>
+          <li>
+            <Link className="text-blue-600 hover:underline" href="/examples">
+              /examples
+            </Link>{" "}
+            for proven prompts with real-world pattern stacks.
+          </li>
+          <li>
+            <Link className="text-blue-600 hover:underline" href="/lovable-optimized">
+              /lovable-optimized
+            </Link>{" "}
+            for Lovable-specific prompt and refinement workflow.
+          </li>
+        </ul>
       </section>
 
       <section className="mb-12">

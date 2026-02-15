@@ -1,7 +1,12 @@
 import fs from 'fs';
+import crypto from 'crypto';
 import path from 'path';
 import { parsePatterns, Pattern } from '@/lib/pattern-parser';
 import { buildPatternTaxonomy, PatternTaxonomy } from '@/lib/pattern-taxonomy';
+import {
+  buildPatternMetadataBundle,
+  type PatternMetadataBundle,
+} from '@/lib/llm-pattern-metadata';
 import { getLibrarySnapshot } from '@/lib/library-index-metadata';
 import {
   LIBRARY_CONTENT_VERSION,
@@ -12,9 +17,11 @@ import {
 export type GuidanceMode = 'prompt' | 'code' | 'mixed';
 
 export interface ReferenceSection {
+  sectionId: string;
   heading: string;
   body: string;
   mode: GuidanceMode;
+  tokenEstimate: number;
 }
 
 export interface ReferenceDocument {
@@ -25,6 +32,15 @@ export interface ReferenceDocument {
   summary: string;
   sections: ReferenceSection[];
   canonicalUrl: string;
+  rawHref: string;
+  rawHash: string;
+  rawContent: string;
+}
+
+export interface PatternFailureMode {
+  symptom: string;
+  fix: string;
+  fallbackPatternId: string | null;
 }
 
 export interface PatternPromptPack {
@@ -47,8 +63,23 @@ export interface PatternCodePack {
 export interface EnrichedPattern extends Pattern {
   canonicalUrl: string;
   taxonomy: PatternTaxonomy;
+  oneSentenceDescription: string;
+  objective: string;
+  whenToUse: string[];
+  avoidWhen: string[];
+  failureModes: PatternFailureMode[];
+  implementationRawHref: string;
+  implementationExcerpt: string;
+  implementationHash: string;
   promptPack: PatternPromptPack;
   codePack: PatternCodePack;
+  llmMetadata: PatternMetadataBundle;
+}
+
+export interface PlaybookPromptVariable {
+  key: string;
+  required: boolean;
+  description: string;
 }
 
 export interface PlaybookPromptPack {
@@ -58,6 +89,7 @@ export interface PlaybookPromptPack {
   qualityChecks: string[];
   failureHandling: string[];
   outputContract: string[];
+  variables?: PlaybookPromptVariable[];
   promptTemplate: string;
 }
 
@@ -338,22 +370,213 @@ let patternCache: EnrichedPattern[] | null = null;
 let referenceCache: ReferenceDocument[] | null = null;
 let playbookCache: ResolvedPlaybook[] | null = null;
 
+const DEFAULT_PLAYBOOK_VARIABLES: PlaybookPromptVariable[] = [
+  { key: 'clinicName', required: true, description: 'Clinic or business display name.' },
+  { key: 'city', required: true, description: 'Primary service city or neighborhood.' },
+  { key: 'phone', required: true, description: 'Public phone number in dialable format.' },
+  { key: 'bookingUrl', required: true, description: 'Live booking or reservation URL.' },
+  { key: 'treatments', required: true, description: 'Top services/treatments/menu highlights.' },
+  {
+    key: 'proofsAvailable',
+    required: true,
+    description: 'Only verifiable trust proof items (review source, certifications, awards, years).',
+  },
+  { key: 'primaryCta', required: true, description: 'Primary CTA text shown in hero and footer.' },
+  { key: 'businessHours', required: false, description: 'Structured opening hours for conversion support.' },
+];
+
+const PLACEHOLDER_TEXT_PATTERNS = [
+  /\btodo\b/i,
+  /\btbd\b/i,
+  /\bplaceholder\b/i,
+  /{{[^}]+}}/,
+  /\[\s*insert[^\]]*\]/i,
+  /^\*\*key design principles/i,
+];
+
 function ensureAbsoluteUrl(pathname: string): string {
   return `${SITE_URL}${pathname}`;
+}
+
+function hashContent(content: string): string {
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
+
+function excerptLines(content: string, maxLines = 30): string {
+  return content.split('\n').slice(0, maxLines).join('\n').trimEnd();
+}
+
+function estimateTokenCount(text: string): number {
+  const words = text.split(/\s+/).map((token) => token.trim()).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words * 1.3));
+}
+
+function stripMarkdownInline(value: string): string {
+  return value
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/[*_~>#]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeLine(value: string): string {
+  return stripMarkdownInline(value.replace(/^[-*]\s*/, '')).replace(/\s+/g, ' ').trim();
+}
+
+function looksLikePlaceholder(value: string): boolean {
+  if (!value) return true;
+  return PLACEHOLDER_TEXT_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function normalizeSentence(text: string, fallback: string): string {
+  const lines = text
+    .split('\n')
+    .map((line) => normalizeLine(line))
+    .filter((line) => line.length > 0 && !looksLikePlaceholder(line));
+
+  if (lines.length === 0) return fallback;
+
+  const joined = lines.join(' ');
+  const sentence = joined.match(/[^.!?]+[.!?]?/)?.[0]?.trim() || lines[0];
+  if (!sentence) return fallback;
+  const withPunctuation = /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
+  return withPunctuation;
+}
+
+function compactTextList(values: string[], max = 3): string[] {
+  const compacted = values
+    .map((value) => normalizeLine(value))
+    .filter((value) => value.length > 0 && !looksLikePlaceholder(value))
+    .map((value) => value.replace(/\.$/, '').trim());
+
+  return Array.from(new Set(compacted)).slice(0, max);
+}
+
+function mapIntentToOutcome(intent: string): string {
+  const normalized = intent.toLowerCase();
+  if (normalized.includes('cta')) return 'drive a clear primary action';
+  if (normalized.includes('trust') || normalized.includes('credibility')) return 'increase trust before action';
+  if (normalized.includes('first-impression')) return 'create immediate first-impression clarity';
+  if (normalized.includes('lead-generation')) return 'increase qualified inbound leads';
+  return `improve ${normalized.replace(/-/g, ' ')}`;
+}
+
+function buildPatternObjective(
+  pattern: Pattern,
+  taxonomy: PatternTaxonomy,
+  oneSentenceDescription: string
+): string {
+  const outcome = mapIntentToOutcome(taxonomy.intents[0] || 'visual clarity');
+  const baseline = normalizeSentence(
+    oneSentenceDescription,
+    `Use ${pattern.name} to ${outcome} with one dominant focal point and a clear CTA.`
+  );
+
+  if (!looksLikePlaceholder(baseline)) {
+    return baseline;
+  }
+
+  return `Use ${pattern.name} to ${outcome} with one dominant focal point and a clear CTA.`;
+}
+
+function buildPatternFailureModes(pattern: Pattern, taxonomy: PatternTaxonomy): PatternFailureMode[] {
+  const fallbackPrimary = taxonomy.fallbackPatternIds[0] || null;
+  const fallbackSecondary = taxonomy.fallbackPatternIds[1] || fallbackPrimary;
+
+  const modes: PatternFailureMode[] = [
+    {
+      symptom: 'Primary action is hard to find above the fold.',
+      fix: 'Reduce competing visual treatments and enforce one dominant focal point with one CTA.',
+      fallbackPatternId: fallbackPrimary,
+    },
+    {
+      symptom: 'Motion or interaction reduces readability on mobile.',
+      fix: 'Switch to reduced-motion behavior and simplify interactions to static states.',
+      fallbackPatternId: fallbackSecondary,
+    },
+    {
+      symptom: 'Required assets are missing or low quality.',
+      fix: 'Use text-first layout and verified trust proof while deferring weak media.',
+      fallbackPatternId: fallbackPrimary,
+    },
+  ];
+
+  if (pattern.desktopOnly) {
+    modes.push({
+      symptom: 'Desktop-only behavior fails on touch devices.',
+      fix: 'Provide stacked mobile layout and remove hover-only controls.',
+      fallbackPatternId: fallbackPrimary,
+    });
+  }
+
+  return modes.slice(0, 4);
+}
+
+function slugifySectionId(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || 'section';
+}
+
+function ensurePlaybookVariables(pack: PlaybookPromptPack): PlaybookPromptVariable[] {
+  if (pack.variables && pack.variables.length > 0) {
+    return pack.variables;
+  }
+  return DEFAULT_PLAYBOOK_VARIABLES;
+}
+
+function buildPasteReadyPromptTemplate(
+  template: string,
+  variables: PlaybookPromptVariable[],
+  constraints: string[]
+): string {
+  const variableLines = variables.map(
+    (variable) => `- ${variable.key}${variable.required ? ' (required)' : ' (optional)'}: ${variable.description}`
+  );
+
+  return [
+    'You are generating a production React + Tailwind page in lovable.dev.',
+    'Variables:',
+    ...variableLines,
+    '',
+    'Rules:',
+    '- Use only provided facts. Do not invent claims, credentials, or metrics.',
+    '- Do not output placeholders or bracketed filler tokens.',
+    ...constraints.map((line) => `- ${normalizeLine(line)}`),
+    '',
+    'Builder brief:',
+    template,
+  ].join('\n');
+}
+
+function normalizePlaybookPromptPack(pack: PlaybookPromptPack): PlaybookPromptPack {
+  const objective = normalizeSentence(pack.objective, 'Generate a reliable conversion-focused landing page prompt.');
+  const variables = ensurePlaybookVariables(pack);
+  return {
+    ...pack,
+    objective,
+    variables,
+    promptTemplate: buildPasteReadyPromptTemplate(pack.promptTemplate, variables, pack.constraints),
+  };
 }
 
 function compactLines(lines: string[]): string[] {
   return lines.map((line) => line.trim()).filter(Boolean);
 }
 
-function toSentence(text: string): string {
-  const line = text.split('\n').map((row) => row.trim()).find(Boolean) || '';
-  return line.replace(/^[-*]\s*/, '');
-}
-
 function stringifyPromptPack(pack: PlaybookPromptPack): string {
+  const variables = ensurePlaybookVariables(pack);
   return [
     `Objective: ${pack.objective}`,
+    '',
+    'Variables:',
+    ...variables.map(
+      (variable) =>
+        `- ${variable.key}${variable.required ? ' (required)' : ' (optional)'}: ${variable.description}`
+    ),
     '',
     'Context Block:',
     ...pack.contextBlock.map((line) => `- ${line}`),
@@ -392,10 +615,14 @@ function stringifyCodePack(pack: PlaybookCodePack): string {
 }
 
 function buildPatternPromptPack(pattern: Pattern, taxonomy: PatternTaxonomy): PatternPromptPack {
-  const summary = toSentence(pattern.description) || `Apply ${pattern.name} with clear hierarchy.`;
+  const oneSentenceDescription = normalizeSentence(
+    pattern.description,
+    `${pattern.name} provides a reusable, high-clarity section pattern for production pages.`
+  );
+  const summary = buildPatternObjective(pattern, taxonomy, oneSentenceDescription);
   const usageHighlights = compactLines(pattern.usageNotes.split('\n')).slice(0, 3);
-  const avoidWhen = taxonomy.avoidWhen.slice(0, 3);
-  const whenToUse = taxonomy.whenToUse.slice(0, 3);
+  const avoidWhen = compactTextList(taxonomy.avoidWhen, 3);
+  const whenToUse = compactTextList(taxonomy.whenToUse, 3);
 
   const contextBlock = [
     `Pattern: ${pattern.name} (${pattern.id}) in ${pattern.category}.`,
@@ -496,14 +723,42 @@ function buildPatternCodePack(pattern: Pattern, taxonomy: PatternTaxonomy): Patt
   };
 }
 
-function enrichPattern(pattern: Pattern): EnrichedPattern {
+function buildPatternImplementationFields(pattern: Pattern) {
+  const source = pattern.code || '';
+  return {
+    implementationRawHref: `/api/llm/raw/patterns/${encodeURIComponent(pattern.id)}.tsx`,
+    implementationExcerpt: excerptLines(source, 30),
+    implementationHash: hashContent(source),
+  };
+}
+
+function enrichPattern(pattern: Pattern, patternNameMap: Map<string, string>): EnrichedPattern {
   const taxonomy = buildPatternTaxonomy(pattern);
+  const oneSentenceDescription = normalizeSentence(
+    pattern.description,
+    `${pattern.name} is a reusable section pattern for production interfaces.`
+  );
+  const objective = buildPatternObjective(pattern, taxonomy, oneSentenceDescription);
+  const whenToUse = compactTextList(taxonomy.whenToUse, 3);
+  const avoidWhen = compactTextList(taxonomy.avoidWhen, 3);
+  const failureModes = buildPatternFailureModes(pattern, taxonomy);
+  const implementation = buildPatternImplementationFields(pattern);
+
   return {
     ...pattern,
     taxonomy,
     canonicalUrl: ensureAbsoluteUrl(`/library/${pattern.id}`),
+    oneSentenceDescription,
+    objective,
+    whenToUse,
+    avoidWhen,
+    failureModes,
+    implementationRawHref: implementation.implementationRawHref,
+    implementationExcerpt: implementation.implementationExcerpt,
+    implementationHash: implementation.implementationHash,
     promptPack: buildPatternPromptPack(pattern, taxonomy),
     codePack: buildPatternCodePack(pattern, taxonomy),
+    llmMetadata: buildPatternMetadataBundle(pattern, taxonomy, { patternNameMap }),
   };
 }
 
@@ -528,6 +783,7 @@ function parseReferenceDocument(config: ReferenceDocConfig): ReferenceDocument {
   const filePath = path.join(LIB_DIR, config.fileName);
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n');
+  const sectionIdCounter = new Map<string, number>();
 
   const title = lines.find((line) => line.startsWith('# '))?.replace(/^#\s+/, '').trim() ?? config.fileName;
   const purpose =
@@ -543,10 +799,16 @@ function parseReferenceDocument(config: ReferenceDocConfig): ReferenceDocument {
   const flush = () => {
     const body = currentBody.join('\n').trim();
     if (!body) return;
+    const baseSectionId = slugifySectionId(currentHeading);
+    const nextCount = (sectionIdCounter.get(baseSectionId) || 0) + 1;
+    sectionIdCounter.set(baseSectionId, nextCount);
+    const sectionId = nextCount === 1 ? baseSectionId : `${baseSectionId}-${nextCount}`;
     sections.push({
+      sectionId,
       heading: currentHeading,
       body,
       mode: classifyGuidanceMode(`${currentHeading}\n${body}`),
+      tokenEstimate: estimateTokenCount(`${currentHeading}\n${body}`),
     });
   };
 
@@ -573,30 +835,49 @@ function parseReferenceDocument(config: ReferenceDocConfig): ReferenceDocument {
     summary,
     sections,
     canonicalUrl: ensureAbsoluteUrl(`/reference/${config.id}`),
+    rawHref: `/api/llm/raw/references/${config.id}.md`,
+    rawHash: hashContent(content),
+    rawContent: content,
   };
 }
 
 function buildPlaybooks(): ResolvedPlaybook[] {
   const patternMap = new Map(getPatternLibrary().map((pattern) => [pattern.id, pattern]));
-  return PLAYBOOKS.map((playbook) => ({
-    ...playbook,
-    promptGuide: stringifyPromptPack(playbook.promptPack),
-    codeGuide: stringifyCodePack(playbook.codePack),
-    patterns: playbook.recommendedPatternIds
-      .map((id) => patternMap.get(id))
-      .filter((pattern): pattern is EnrichedPattern => Boolean(pattern)),
-  }));
+  return PLAYBOOKS.map((playbook) => {
+    const promptPack = normalizePlaybookPromptPack(playbook.promptPack);
+    return {
+      ...playbook,
+      promptPack,
+      promptGuide: stringifyPromptPack(promptPack),
+      codeGuide: stringifyCodePack(playbook.codePack),
+      patterns: playbook.recommendedPatternIds
+        .map((id) => patternMap.get(id))
+        .filter((pattern): pattern is EnrichedPattern => Boolean(pattern)),
+    };
+  });
 }
 
 export function getPatternLibrary(): EnrichedPattern[] {
   if (!patternCache) {
-    patternCache = parsePatterns(PATTERN_FILE).map(enrichPattern);
+    const parsedPatterns = parsePatterns(PATTERN_FILE);
+    const patternNameMap = new Map(parsedPatterns.map((pattern) => [pattern.id, pattern.name]));
+    patternCache = parsedPatterns.map((pattern) => enrichPattern(pattern, patternNameMap));
   }
   return patternCache;
 }
 
 export function getPatternById(id: string): EnrichedPattern | undefined {
   return getPatternLibrary().find((pattern) => pattern.id === id);
+}
+
+export function resolvePatternByAnyId(id: string): EnrichedPattern | undefined {
+  const normalized = id.trim().toLowerCase();
+  return getPatternLibrary().find((pattern) => {
+    if (pattern.id.toLowerCase() === normalized) return true;
+    if (pattern.taxonomy.canonicalId.toLowerCase() === normalized) return true;
+    if (pattern.taxonomy.slug.toLowerCase() === normalized) return true;
+    return false;
+  });
 }
 
 export function getReferenceLibrary(): ReferenceDocument[] {
@@ -608,6 +889,12 @@ export function getReferenceLibrary(): ReferenceDocument[] {
 
 export function getReferenceById(id: string): ReferenceDocument | undefined {
   return getReferenceLibrary().find((doc) => doc.id === id);
+}
+
+export function getReferenceSectionById(referenceId: string, sectionId: string): ReferenceSection | undefined {
+  const reference = getReferenceById(referenceId);
+  if (!reference) return undefined;
+  return reference.sections.find((section) => section.sectionId === sectionId);
 }
 
 export function getPlaybooks(): ResolvedPlaybook[] {
