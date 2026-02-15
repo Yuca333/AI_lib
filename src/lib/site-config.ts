@@ -1,4 +1,4 @@
-export const SITE_URL = 'https://pat-lib-online.vercel.app';
+export const SITE_URL = process.env.URL || 'https://ai-lib-library.netlify.app';
 export const SITE_NAME = 'Pat Lib Online';
 export const SITE_DESCRIPTION =
   'LLM-first pattern library for prompt-mode and code-mode UI generation with retrieval-ready APIs.';

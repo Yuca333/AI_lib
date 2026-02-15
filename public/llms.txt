@@ -1,38 +1,43 @@
 # Pat Lib Online
 > LLM-first UI pattern library with deterministic retrieval contracts and lossless raw artifact transport.
 
+## Base URL
+
+https://ai-lib-library.netlify.app
+
 ## Canonical Entry Points
 
-- Root: `/`
-- LLM UI index: `/llm`
-- Machine index: `/api/llm/index`
-- Root JSON index: `/llm-index.json`
-- Contracts API: `/api/llm/contracts`
-- Health API: `/api/llm/health`
+- Root: https://ai-lib-library.netlify.app/
+- LLM UI index: https://ai-lib-library.netlify.app/llm
+- Machine index: https://ai-lib-library.netlify.app/api/llm/index
+- Root JSON index: https://ai-lib-library.netlify.app/llm-index.json
+- Contracts API: https://ai-lib-library.netlify.app/api/llm/contracts
+- Health API: https://ai-lib-library.netlify.app/api/llm/health
+- Full machine-readable docs: https://ai-lib-library.netlify.app/llms-full.txt
 
 ## Retrieval Strategy
 
 ### Minimal-Token Route (recommended)
-1. Read `/api/llm/index?format=compact`.
-2. Query `/api/llm/search?q=<task>&scope=all&mode=prompt|code&format=compact`.
+1. Read `https://ai-lib-library.netlify.app/api/llm/index?format=compact`.
+2. Query `https://ai-lib-library.netlify.app/api/llm/search?q=<task>&scope=all&mode=prompt|code&format=compact`.
 3. Resolve only selected records with projected fields:
-   - `/api/llm/patterns/{id}?packOnly=true&fields=id,name,objective,modes.code.implementationRawHref,modes.code.implementationHash`
-   - `/api/llm/playbooks/{slug}?packOnly=true`
+   - `https://ai-lib-library.netlify.app/api/llm/patterns/{id}?packOnly=true&fields=id,name,objective,modes.code.implementationRawHref,modes.code.implementationHash`
+   - `https://ai-lib-library.netlify.app/api/llm/playbooks/{slug}?packOnly=true`
 4. Pull only needed reference chunks:
-   - `/api/llm/references/{id}/sections`
-   - `/api/llm/references/{id}/sections/{sectionId}`
+   - `https://ai-lib-library.netlify.app/api/llm/references/{id}/sections`
+   - `https://ai-lib-library.netlify.app/api/llm/references/{id}/sections/{sectionId}`
 
 ### Deterministic Route (full control)
-1. `/api/llm/index`
-2. `/api/llm/patterns` + filters (`q`, `mode`, `industry`, `category`, `tag`, `limit`)
-3. `/api/llm/playbooks`
-4. `/api/llm/references`
-5. `/api/llm/contracts`
+1. `https://ai-lib-library.netlify.app/api/llm/index`
+2. `https://ai-lib-library.netlify.app/api/llm/patterns` + filters (`q`, `mode`, `industry`, `category`, `tag`, `limit`)
+3. `https://ai-lib-library.netlify.app/api/llm/playbooks`
+4. `https://ai-lib-library.netlify.app/api/llm/references`
+5. `https://ai-lib-library.netlify.app/api/llm/contracts`
 
 ## Lossless Raw Artifact Endpoints
 
-- Pattern TSX source: `/api/llm/raw/patterns/{id}.tsx`
-- Reference markdown source: `/api/llm/raw/references/{id}.md`
+- Pattern TSX source: `https://ai-lib-library.netlify.app/api/llm/raw/patterns/{id}.tsx`
+- Reference markdown source: `https://ai-lib-library.netlify.app/api/llm/raw/references/{id}.md`
 
 Raw endpoints return `text/plain` without HTML sanitization.
 
@@ -47,12 +52,12 @@ Supported on collection/detail retrieval endpoints:
 
 - Human pattern ID: `1.4`
 - Canonical pattern ID: `patlib.pattern.1.4`
-- Canonical route: `/api/llm/patterns/1.4`
+- Canonical route: `https://ai-lib-library.netlify.app/api/llm/patterns/1.4`
 
 ## Prompt Composer
 
 - Compose builder-ready lovable prompt:
-  - `POST /api/llm/compose/lovable`
+  - `POST https://ai-lib-library.netlify.app/api/llm/compose/lovable`
   - body: `playbookSlug`, `selectedPatternIds[]`, `variables`
   - output: `prompt` + `assumptions`
 
@@ -62,6 +67,6 @@ The composer enforces:
 
 ## Human Navigation
 
-- `/library`
-- `/playbooks`
-- `/reference`
+- https://ai-lib-library.netlify.app/library
+- https://ai-lib-library.netlify.app/playbooks
+- https://ai-lib-library.netlify.app/reference

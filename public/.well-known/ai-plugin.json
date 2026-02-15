@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Pat Lib Online",
+  "name_for_model": "pat_lib_online",
+  "description_for_human": "LLM-first UI pattern library with production-ready components, industry playbooks, and retrieval-ready APIs.",
+  "description_for_model": "Pat Lib Online is a UI pattern library optimized for LLM retrieval. It provides 29 production-ready UI patterns (heroes, cards, galleries, interactive elements, text animations, stats, transitions, ambient effects, layouts, conversion modules), 3 industry playbooks (dentist, restaurant, contractor), and 10 reference documents. Use the /api/llm/search endpoint for discovery, /api/llm/patterns/{id} for pattern details, and /api/llm/raw/patterns/{id}.tsx for raw TSX source code. All endpoints support token-efficient field projection via ?fields= and ?format=compact parameters.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://ai-lib-library.netlify.app/api/llm/contracts"
+  },
+  "logo_url": "https://ai-lib-library.netlify.app/favicon.ico",
+  "contact_email": "",
+  "legal_info_url": "https://ai-lib-library.netlify.app/"
+}
