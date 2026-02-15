@@ -1,0 +1,156 @@
+# Pat Lib Online — Full Machine-Readable Documentation
+> LLM-first UI pattern library with deterministic retrieval contracts and lossless raw artifact transport.
+> Version: 2026.02 | Schema: 2.0.0
+
+## Base URL
+
+https://ai-lib-library.netlify.app
+
+## Quick Start for LLMs
+
+1. Fetch the compact index: GET https://ai-lib-library.netlify.app/api/llm/index?format=compact
+2. Search by task: GET https://ai-lib-library.netlify.app/api/llm/search?q=hero+section&mode=code&format=compact
+3. Retrieve a pattern: GET https://ai-lib-library.netlify.app/api/llm/patterns/1.4?packOnly=true
+4. Get raw TSX: GET https://ai-lib-library.netlify.app/api/llm/raw/patterns/1.4.tsx
+
+## API Endpoints
+
+### Index & Discovery
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | /api/llm/index | Full index with metadata, taxonomy, navigation |
+| GET | /api/llm/index?format=compact | Minimal-token index |
+| GET | /api/llm/health | Health check |
+| GET | /api/llm/contracts | API response schema contracts |
+| GET | /llm-index.json | JSON feed of the full index |
+| GET | /llms.txt | This summary document |
+
+### Pattern Retrieval
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | /api/llm/patterns | All patterns (supports filters: q, mode, industry, category, tag, limit) |
+| GET | /api/llm/patterns/{id} | Single pattern detail |
+| GET | /api/llm/raw/patterns/{id}.tsx | Raw TSX source (text/plain, no HTML) |
+
+### Playbook Retrieval
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | /api/llm/playbooks | All playbooks |
+| GET | /api/llm/playbooks/{slug} | Single playbook detail |
+
+### Reference Retrieval
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | /api/llm/references | All reference documents |
+| GET | /api/llm/references/{id} | Single reference document |
+| GET | /api/llm/references/{id}/sections | Sections index for a reference |
+| GET | /api/llm/references/{id}/sections/{sectionId} | Single section |
+| GET | /api/llm/raw/references/{id}.md | Raw markdown source |
+
+### Search
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | /api/llm/search?q={query} | Unified search across patterns, playbooks, references |
+| | &scope=all\|patterns\|playbooks\|references | Filter by content type |
+| | &mode=prompt\|code | Filter by retrieval mode |
+| | &format=full\|compact | Control response verbosity |
+
+### Prompt Composition
+| Method | URL | Description |
+|--------|-----|-------------|
+| POST | /api/llm/compose/lovable | Compose a builder-ready prompt from playbook + patterns |
+
+POST body: `{ "playbookSlug": "dentist-landing", "selectedPatternIds": ["1.4", "10.1"], "variables": {} }`
+
+## Query Controls (Token Efficiency)
+
+All collection and detail endpoints support:
+- `format=full|compact` — control response verbosity
+- `packOnly=true` — alias for `format=compact`
+- `fields=id,name,objective` — project only specific fields (comma-separated)
+
+## Available Patterns (29)
+
+### Heroes
+- 1.1 MeshGradientHero — Animated floating mesh gradients with trust indicators
+- 1.2 DicedHero — Image-led hero with diced layout
+- 1.3 CutoutHero — Subject cutout from background with depth effect
+- 1.4 DiagonalSplitHero — Split layout with text and imagery
+
+### Cards
+- 2.1 GlowCard — Soft glow effect on hover
+- 2.2 PlaceCard — Captioned image card
+- 2.3 SpotlightCard — Desktop-only spotlight effect
+
+### Galleries
+- 3.1 ExpandingCards — Desktop-only expanding card gallery
+- 3.2 ExpandableGallery — Mobile-friendly expandable gallery
+- 3.3 ScrollStack — Narrative scroll-triggered pattern
+
+### Interactive
+- 4.1 InteractiveSelector — Tab/selector interaction
+- 4.2 ExpandableTabs — Navigation tabs
+- 4.3 InteractiveHoverButton — Desktop hover CTA
+
+### Text
+- 5.1 MagneticText — Desktop-only cursor-tracking text
+- 5.2 FlipWords — Animated word transitions
+- 5.3 TextLoop — Looping text animation
+- 5.4 TextReveal — Text reveal animation
+- 5.5 MorphingCursorText — Desktop-only morphing text
+
+### Stats
+- 6.1 AnimatedCounter — Animated numeric stats
+
+### Transitions
+- 7.1 SectionTransition — Between-section transition effect
+
+### Ambient
+- 8.1 AuroraBackground — Aurora-like animated background
+- 8.2 AmbientBlobs — Floating blob shapes
+- 8.3 ParallaxGlass — Premium parallax glass effect
+- 8.4 ShapeBlurLite — Subtle shape blur effect
+
+### Layout
+- 9.1 ParallaxSection — Parallax scroll effect
+- 9.2 InfiniteMarquee — Scrolling marquee display
+- 9.3 BentoGrid — Modern bento-style grid layout
+
+### Conversion
+- 10.1 ServiceCard — Service/pricing card
+- 10.2 TestimonialCarousel — Social proof carousel
+- 10.3 ContactCTA — Conversion CTA module
+- 10.4 BusinessHours — Operating hours display
+
+## Available Playbooks (3)
+
+- dentist-landing — Dental clinic landing page (patterns: 1.4, 10.1, 10.2, 6.1, 10.3, 10.4, 7.1)
+- restaurant-landing — Restaurant landing page (patterns: 1.2, 2.2, 3.2, 10.2, 10.3, 7.1)
+- contractor-landing — Contractor/trades landing page (patterns: 1.4, 10.1, 3.3, 6.1, 10.3)
+
+## Available References (10)
+
+- core-rules — Core LLM rules for pattern usage
+- css-bridge — CSS integration guide
+- implementation-blocks — Implementation guidance blocks
+- pattern-select — Pattern selection logic
+- pattern-quality-system — Quality criteria system
+- pattern-lifecycle — Pattern lifecycle documentation
+- power-quality — Performance guidelines
+- prompt-vocabulary — Prompt vocabulary reference
+- retrieval-contracts — API retrieval contracts
+- visual-vocabulary — Visual vocabulary definitions
+
+## Stable Identifiers
+
+- Human pattern ID: `1.4`
+- Canonical pattern ID: `patlib.pattern.1.4`
+- Canonical route: `/api/llm/patterns/1.4`
+
+## Response Format
+
+All JSON API responses follow consistent contracts. Fetch `/api/llm/contracts` for the full schema definition.
+
+## CORS
+
+All `/api/llm/*` endpoints allow cross-origin requests (Access-Control-Allow-Origin: *).

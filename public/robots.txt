@@ -20,4 +20,10 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
-Sitemap: https://pat-lib-online.vercel.app/sitemap.xml
+Sitemap: https://ai-lib-library.netlify.app/sitemap.xml
+
+# LLM Discovery
+# llms.txt: https://ai-lib-library.netlify.app/llms.txt
+# llms-full.txt: https://ai-lib-library.netlify.app/llms-full.txt
+# AI plugin: https://ai-lib-library.netlify.app/.well-known/ai-plugin.json
+# Machine index: https://ai-lib-library.netlify.app/api/llm/index
