@@ -1,9 +1,15 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: 'LLM Index - Pat Lib Online',
     description: 'Machine-first index for patterns, playbooks, and references.',
+    alternates: {
+        canonical: '/llm',
+    },
 };
+
+export const revalidate = 3600;
 
 export default function LlmPage() {
     return (
@@ -22,9 +28,9 @@ export default function LlmPage() {
                         Retrieve playbooks and prompt-oriented references first, then pull pattern-specific prompt examples.
                     </p>
                     <ul className="list-disc pl-5 text-sm text-blue-700 space-y-1">
-                        <li><Link href="/api/llm/playbooks">/api/llm/playbooks</Link></li>
-                        <li><Link href="/api/llm/references">/api/llm/references</Link></li>
-                        <li><Link href="/api/llm/patterns">/api/llm/patterns</Link></li>
+                        <li><Link href="/api/llm/search?q=dentist+trust+hero&mode=prompt">/api/llm/search?q=dentist+trust+hero&mode=prompt</Link></li>
+                        <li><Link href="/api/llm/playbooks?industry=dental+clinic&mode=prompt">/api/llm/playbooks?industry=dental+clinic&mode=prompt</Link></li>
+                        <li><Link href="/api/llm/references?mode=prompt">/api/llm/references?mode=prompt</Link></li>
                     </ul>
                 </section>
 
@@ -37,6 +43,18 @@ export default function LlmPage() {
                         <li><Link href="/api/llm/patterns/1.4">/api/llm/patterns/1.4</Link></li>
                         <li><Link href="/api/llm/playbooks/dentist-landing">/api/llm/playbooks/dentist-landing</Link></li>
                         <li><Link href="/api/llm/references/implementation-blocks">/api/llm/references/implementation-blocks</Link></li>
+                    </ul>
+                </section>
+
+                <section className="bg-white border border-gray-200 rounded-xl p-6">
+                    <h2 className="text-xl font-bold mb-3">Contracts & Schemas</h2>
+                    <p className="text-sm text-gray-700 mb-4">
+                        Use these endpoints for tool-using agents that need stable response contracts and canonical IDs.
+                    </p>
+                    <ul className="list-disc pl-5 text-sm text-blue-700 space-y-1">
+                        <li><Link href="/api/llm/index">/api/llm/index</Link></li>
+                        <li><Link href="/api/llm/contracts">/api/llm/contracts</Link></li>
+                        <li><Link href="/llms.txt">/llms.txt</Link></li>
                     </ul>
                 </section>
             </main>

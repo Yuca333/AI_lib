@@ -2,6 +2,30 @@ import React from 'react';
 import { PatternViewer } from '@/components/library/pattern-viewer';
 import { getPatternLibrary } from '@/lib/library-knowledge';
 import Link from 'next/link';
+import type { Metadata } from 'next';
+import { SITE_URL } from '@/lib/site-config';
+
+export const revalidate = 3600;
+
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const params = await props.params;
+    const pattern = getPatternLibrary().find((item) => item.id === params.id);
+
+    if (!pattern) {
+        return {
+            title: 'Pattern Not Found',
+            alternates: { canonical: `/library/${params.id}` },
+        };
+    }
+
+    return {
+        title: `${pattern.name} (${pattern.id})`,
+        description: pattern.description,
+        alternates: {
+            canonical: `/library/${pattern.id}`,
+        },
+    };
+}
 
 // Next.js 16+ requires awaiting params
 export default async function PatternDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -21,8 +45,27 @@ export default async function PatternDetailPage(props: { params: Promise<{ id: s
         );
     }
 
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        headline: `${pattern.name} (${pattern.id})`,
+        description: pattern.description,
+        url: `${SITE_URL}/library/${pattern.id}`,
+        about: {
+            '@type': 'SoftwareSourceCode',
+            codeSampleType: 'snippet',
+            programmingLanguage: 'TypeScript',
+            text: pattern.code,
+        },
+        keywords: pattern.taxonomy.tags.join(', '),
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 font-sans pb-12">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
             <header className="bg-white border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <Link href="/library" className="text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-2">

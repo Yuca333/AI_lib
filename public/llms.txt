@@ -1,49 +1,68 @@
-# Project: Pat Lib Online
-> LLM-first web design and pattern library with Prompt Mode and Code Mode outputs.
+# Pat Lib Online
+> LLM-first UI pattern library with prompt-mode and code-mode retrieval contracts.
 
-## Start Here
+## Canonical Entry Points
 
 - Root: `https://pat-lib-online.vercel.app/`
-- LLM index page: `https://pat-lib-online.vercel.app/llm`
-- Machine index endpoint: `https://pat-lib-online.vercel.app/api/llm/index`
+- LLM UI index: `https://pat-lib-online.vercel.app/llm`
+- Machine index: `https://pat-lib-online.vercel.app/api/llm/index`
+- Root JSON index: `https://pat-lib-online.vercel.app/llm-index.json`
+- Retrieval API: `https://pat-lib-online.vercel.app/api/llm/search`
+- Contracts API: `https://pat-lib-online.vercel.app/api/llm/contracts`
 - Sitemap: `https://pat-lib-online.vercel.app/sitemap.xml`
 
-## Retrieval Modes
+## Retrieval Strategy
 
-### Prompt Mode
-Use when the LLM should generate or refine prompts for an AI coder.
+### Fast Route (query-driven)
+1. Call `/api/llm/search?q=<task>&scope=all&mode=prompt|code`.
+2. Read top `patterns`, `playbooks`, and `references` results.
+3. Resolve selected entries with detail endpoints.
 
-1. Read `/api/llm/playbooks` and select an industry playbook.
-2. Read `/api/llm/playbooks/[slug]` for `modes.prompt`.
-3. Pull pattern prompt examples from `/api/llm/patterns/[id]`.
-4. Pull guardrails from `/api/llm/references/[id]` (`core-rules`, `pattern-select`, `prompt-vocabulary`).
+### Deterministic Route (full control)
+1. Read `/api/llm/index` for taxonomy + endpoint map.
+2. Filter `/api/llm/patterns` using `q`, `industry`, `category`, `tag`, `mode`.
+3. Read `/api/llm/patterns/[id]` for:
+   - `modes.prompt.pack` (context, constraints, checks, failure handling)
+   - `modes.code.pack` (implementation checklist + compatibility rules)
+4. Read `/api/llm/playbooks/[slug]` for integrated prompt/code plans.
+5. Read `/api/llm/references/[id]` for guardrails and technical constraints.
 
-### Code Mode
-Use when the LLM is the coder and should integrate components directly.
+## Stable Identifiers
 
-1. Read `/api/llm/patterns` and choose required patterns.
-2. Read `/api/llm/patterns/[id]` for `modes.code.implementation`.
-3. Pull implementation/CSS constraints from `/api/llm/references/[id]` (`implementation-blocks`, `css-bridge`).
-4. Optionally use `/api/llm/playbooks/[slug]` for integration order.
+- Human ID: `1.4`
+- Canonical ID: `patlib.pattern.1.4`
+- Canonical URL: `/library/1.4`
+
+Both ID forms can be used with `/api/llm/patterns/[id]`.
+
+## Query Parameters
+
+### `/api/llm/patterns`
+- `q`: free-text query
+- `mode`: `prompt` or `code`
+- `industry`: industry keyword
+- `category`: category keyword
+- `tag`: repeatable or comma-separated tag
+- `limit`: max records
+
+### `/api/llm/playbooks`
+- `q`, `industry`, `mode`, `limit`
+
+### `/api/llm/references`
+- `q`, `mode`, `limit`
+
+### `/api/llm/search`
+- `q`, `scope` (`all|patterns|playbooks|references`), `mode`, `industry`, `category`, `tag`, `limit`
+
+## Output Contracts
+
+- `/api/llm/contracts` provides field-level contract expectations for:
+  - pattern summary/detail
+  - playbook detail
+  - reference detail
 
 ## Human Navigation
 
-- `/library`: pattern catalog with Prompt vs Code tabs
-- `/playbooks`: industry-specific integration packs (dentist, restaurant, contractor)
-- `/reference`: indexed guidance from `/lib-files`
-
-## API Endpoints
-
-- `/api/llm/index`
-- `/api/llm/patterns`
-- `/api/llm/patterns/[id]`
-- `/api/llm/playbooks`
-- `/api/llm/playbooks/[slug]`
-- `/api/llm/references`
-- `/api/llm/references/[id]`
-
-## Data Notes
-
-- Pattern IDs are stable (example: `1.4`, `10.2`).
-- `modes.prompt` contains prompt-ready guidance.
-- `modes.code` contains code-ready integration content.
+- `/library`: full pattern catalog
+- `/playbooks`: industry playbooks
+- `/reference`: indexed markdown guides from `lib-files/`

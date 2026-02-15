@@ -1,10 +1,16 @@
 import Link from 'next/link';
 import { getReferenceLibrary } from '@/lib/library-knowledge';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: 'Reference Docs - Pat Lib Online',
     description: 'Structured references from /lib-files for prompt strategy and code integration.',
+    alternates: {
+        canonical: '/reference',
+    },
 };
+
+export const revalidate = 3600;
 
 const modeColors: Record<string, string> = {
     prompt: 'bg-purple-50 text-purple-700',

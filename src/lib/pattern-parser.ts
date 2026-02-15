@@ -5,6 +5,9 @@ export interface Pattern {
     name: string;
     category: string;
     score: string;
+    scoreValue: number | null;
+    desktopOnly: boolean | null;
+    focalRating: number | null;
     description: string;
     code: string;
     promptExample: string;
@@ -63,6 +66,25 @@ function buildPromptFallback(patternName: string, description: string, usageNote
 
     const summary = description || extractFirstMeaningfulSentence(usageNotes);
     return `Implement ${patternName}.\n- Goal: ${summary || 'Apply this pattern with clear visual hierarchy.'}\n- Include reduced-motion fallback.\n- Keep semantic HTML and visible focus states.`;
+}
+
+function parseScoreMetadata(scoreLine: string): {
+    scoreValue: number | null;
+    desktopOnly: boolean | null;
+    focalRating: number | null;
+} {
+    const scoreValue = scoreLine.match(/([+-]?\d+)/)?.[1];
+    const desktopOnlyRaw = scoreLine.match(/Desktop\s*Only\*\*:\s*(Yes|No)/i)?.[1];
+    const focalStars = scoreLine.match(/Focal\s*Rating\*\*:\s*(★+)/)?.[1];
+
+    return {
+        scoreValue: typeof scoreValue === 'string' ? Number.parseInt(scoreValue, 10) : null,
+        desktopOnly:
+            typeof desktopOnlyRaw === 'string'
+                ? desktopOnlyRaw.toLowerCase() === 'yes'
+                : null,
+        focalRating: focalStars ? focalStars.length : null,
+    };
 }
 
 export function parsePatterns(filePath: string): Pattern[] {
@@ -151,6 +173,9 @@ export function parsePatterns(filePath: string): Pattern[] {
                 name: patternMatch[2].trim(),
                 category: currentCategory,
                 score: '',
+                scoreValue: null,
+                desktopOnly: null,
+                focalRating: null,
                 description: '',
                 code: '',
                 promptExample: '',
@@ -196,6 +221,10 @@ export function parsePatterns(filePath: string): Pattern[] {
         // Extract Score / Metadata line
         if (scoreRegex.test(line.trim())) {
             currentPattern.score = line.trim();
+            const parsed = parseScoreMetadata(currentPattern.score);
+            currentPattern.scoreValue = parsed.scoreValue;
+            currentPattern.desktopOnly = parsed.desktopOnly;
+            currentPattern.focalRating = parsed.focalRating;
             continue;
         }
 

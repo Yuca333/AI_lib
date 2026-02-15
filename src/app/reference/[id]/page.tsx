@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getReferenceById } from '@/lib/library-knowledge';
+import type { Metadata } from 'next';
+import { SITE_URL } from '@/lib/site-config';
+
+export const revalidate = 3600;
 
 const modeStyles: Record<string, string> = {
     prompt: 'bg-purple-50 text-purple-700 border-purple-100',
@@ -8,14 +12,45 @@ const modeStyles: Record<string, string> = {
     mixed: 'bg-slate-100 text-slate-700 border-slate-200',
 };
 
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const params = await props.params;
+    const doc = getReferenceById(params.id);
+    if (!doc) {
+        return {
+            title: 'Reference Not Found',
+            alternates: { canonical: `/reference/${params.id}` },
+        };
+    }
+
+    return {
+        title: doc.title,
+        description: doc.summary,
+        alternates: {
+            canonical: `/reference/${doc.id}`,
+        },
+    };
+}
+
 export default async function ReferenceDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     const doc = getReferenceById(params.id);
 
     if (!doc) notFound();
 
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        headline: doc.title,
+        description: doc.summary,
+        url: `${SITE_URL}/reference/${doc.id}`,
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-12">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
             <header className="bg-white border-b border-gray-200">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <Link href="/reference" className="text-gray-500 hover:text-gray-900 transition-colors">

@@ -2,6 +2,29 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PlaybookViewer } from '@/components/library/playbook-viewer';
 import { getPlaybookBySlug } from '@/lib/library-knowledge';
+import type { Metadata } from 'next';
+import { SITE_URL } from '@/lib/site-config';
+
+export const revalidate = 3600;
+
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+    const params = await props.params;
+    const playbook = getPlaybookBySlug(params.slug);
+    if (!playbook) {
+        return {
+            title: 'Playbook Not Found',
+            alternates: { canonical: `/playbooks/${params.slug}` },
+        };
+    }
+
+    return {
+        title: playbook.title,
+        description: playbook.summary,
+        alternates: {
+            canonical: `/playbooks/${playbook.slug}`,
+        },
+    };
+}
 
 export default async function PlaybookDetailPage(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;
@@ -9,8 +32,25 @@ export default async function PlaybookDetailPage(props: { params: Promise<{ slug
 
     if (!playbook) notFound();
 
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'HowTo',
+        name: playbook.title,
+        description: playbook.summary,
+        url: `${SITE_URL}/playbooks/${playbook.slug}`,
+        step: playbook.codePack.integrationSequence.map((step, index) => ({
+            '@type': 'HowToStep',
+            position: index + 1,
+            text: step,
+        })),
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 font-sans pb-12">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
             <header className="bg-white border-b border-gray-200">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <Link href="/playbooks" className="text-gray-500 hover:text-gray-900 transition-colors">

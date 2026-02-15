@@ -45,6 +45,7 @@ export default function Home() {
       <section className="bg-white border border-gray-200 rounded-xl p-6">
         <h2 className="text-2xl font-bold mb-2">Code Mode Workflow</h2>
         <ol className="list-decimal pl-5 text-sm text-gray-700 space-y-1">
+          <li>Use <code>/api/llm/search?q=...</code> to rank candidate patterns and playbooks.</li>
           <li>Call <code>/api/llm/patterns/:id</code> for implementation blocks.</li>
           <li>Use <code>/api/llm/references/:id</code> for CSS and guardrail docs.</li>
           <li>Follow integration steps from <code>/api/llm/playbooks/:slug</code>.</li>
@@ -125,7 +126,7 @@ export default function Home() {
           <li><strong>JSON-LD</strong>: Included on every page.</li>
           <li><strong>Semantic HTML</strong>: Strictly enforced.</li>
           <li><strong>Code Blocks</strong>: Pre-formatted for parsing.</li>
-          <li><strong>LLM API</strong>: <code>/api/llm/index</code> contains the machine-first map.</li>
+          <li><strong>LLM API</strong>: <code>/api/llm/index</code> + <code>/api/llm/search</code> provide machine-first retrieval map.</li>
         </ul>
       </section>
     </div>

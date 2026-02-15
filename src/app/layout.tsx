@@ -2,17 +2,39 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site-config";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Pat Lib Online - AI-Optimized Web Elements",
-  description: "LLM-first pattern library with prompt blueprints and code integration guides.",
-  authors: [{ name: "Pat Lib Online" }],
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} - LLM-First Pattern Library`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "LLM pattern library",
+    "prompt engineering UI",
+    "design system retrieval",
+    "web UI patterns",
+    "agent-readable API",
+  ],
+  authors: [{ name: SITE_NAME }],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "Pat Lib Online",
-    description: "AI-Optimized Web Elements Documentation",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
   },
   robots: {
     index: true,
@@ -32,21 +54,54 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Pat Lib Online",
-    "url": "https://pat-lib-online.vercel.app/",
-    "description": "A structured library of web elements optimized for artificial intelligence processing.",
-  };
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${SITE_URL}/api/llm/search?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      name: `${SITE_NAME} Dataset`,
+      description:
+        "Structured dataset of UI patterns, playbooks, and retrieval contracts for agent-driven prompt and code generation.",
+      creator: {
+        "@type": "Organization",
+        name: SITE_NAME,
+      },
+      distribution: [
+        {
+          "@type": "DataDownload",
+          contentUrl: `${SITE_URL}/api/llm/index`,
+          encodingFormat: "application/json",
+        },
+        {
+          "@type": "DataDownload",
+          contentUrl: `${SITE_URL}/api/llm/patterns`,
+          encodingFormat: "application/json",
+        },
+      ],
+    },
+  ];
 
   return (
     <html lang="en">
       <body className={inter.className}>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        {jsonLd.map((entry, index) => (
+          <script
+            key={index}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(entry) }}
+          />
+        ))}
         <main className="min-h-screen bg-white text-black p-8">
             <header className="mb-8 border-b pb-4">
                 <h1 className="text-3xl font-bold mb-2">Pat Lib Online</h1>
@@ -61,7 +116,7 @@ export default function RootLayout({
             </header>
             {children}
             <footer className="mt-12 border-t pt-4 text-sm text-gray-500">
-                <p> optimized for machine reading. &copy; {new Date().getFullYear()} Pat Lib Online</p>
+                <p>Structured for machine retrieval and high-quality UI generation. &copy; {new Date().getFullYear()} Pat Lib Online</p>
             </footer>
         </main>
       </body>

@@ -1,10 +1,16 @@
 import Link from 'next/link';
 import { getPlaybooks } from '@/lib/library-knowledge';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: 'LLM Playbooks - Pat Lib Online',
     description: 'Industry playbooks with prompt mode and code mode integration plans.',
+    alternates: {
+        canonical: '/playbooks',
+    },
 };
+
+export const revalidate = 3600;
 
 export default function PlaybooksPage() {
     const playbooks = getPlaybooks();

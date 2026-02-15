@@ -2,6 +2,17 @@ import React from 'react';
 import { PatternCard } from '@/components/library/pattern-card';
 import { getPatternLibrary } from '@/lib/library-knowledge';
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Pattern Library',
+    description: 'Canonical pattern catalog with prompt-mode and code-mode retrieval metadata.',
+    alternates: {
+        canonical: '/library',
+    },
+};
+
+export const revalidate = 3600;
 
 // Server Component
 export default async function LibraryPage() {

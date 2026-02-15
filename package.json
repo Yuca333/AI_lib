@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:content": "node scripts/check-content.mjs",
+    "check:retrieval": "node scripts/check-retrieval.mjs",
+    "score:prompt": "node scripts/score-prompt.mjs",
+    "test": "npm run check:content && npm run check:retrieval"
   },
   "dependencies": {
     "next": "16.1.6",

@@ -1,42 +1,53 @@
-import { NextResponse } from 'next/server';
+import { jsonError, jsonWithMeta } from '@/lib/api-response';
 import { getPlaybookBySlug } from '@/lib/library-knowledge';
 
+export const revalidate = 3600;
+
 export async function GET(_: Request, props: { params: Promise<{ slug: string }> }) {
-    try {
-        const params = await props.params;
-        const playbook = getPlaybookBySlug(params.slug);
+  try {
+    const params = await props.params;
+    const playbook = getPlaybookBySlug(params.slug);
 
-        if (!playbook) {
-            return NextResponse.json({ error: 'Playbook not found' }, { status: 404 });
-        }
-
-        return NextResponse.json({
-            slug: playbook.slug,
-            title: playbook.title,
-            industry: playbook.industry,
-            summary: playbook.summary,
-            modes: {
-                prompt: playbook.promptGuide,
-                code: playbook.codeGuide,
-            },
-            recommendedPatterns: playbook.patterns.map((pattern) => ({
-                id: pattern.id,
-                name: pattern.name,
-                category: pattern.category,
-                description: pattern.description,
-                href: `/api/llm/patterns/${pattern.id}`,
-            })),
-            references: playbook.references.map((referenceId) => ({
-                id: referenceId,
-                href: `/api/llm/references/${referenceId}`,
-            })),
-            links: {
-                ui: `/playbooks/${playbook.slug}`,
-                collection: '/playbooks',
-            },
-        });
-    } catch (error) {
-        console.error('Failed to load playbook detail', error);
-        return NextResponse.json({ error: 'Failed to load playbook detail' }, { status: 500 });
+    if (!playbook) {
+      return jsonError('Playbook not found', 404);
     }
+
+    return jsonWithMeta({
+      slug: playbook.slug,
+      title: playbook.title,
+      industry: playbook.industry,
+      summary: playbook.summary,
+      modes: {
+        prompt: {
+          guide: playbook.promptGuide,
+          pack: playbook.promptPack,
+        },
+        code: {
+          guide: playbook.codeGuide,
+          pack: playbook.codePack,
+        },
+      },
+      recommendedPatterns: playbook.patterns.map((pattern) => ({
+        id: pattern.id,
+        canonicalId: pattern.taxonomy.canonicalId,
+        name: pattern.name,
+        category: pattern.category,
+        description: pattern.description,
+        tags: pattern.taxonomy.tags,
+        href: `/api/llm/patterns/${pattern.id}`,
+      })),
+      references: playbook.references.map((referenceId) => ({
+        id: referenceId,
+        href: `/api/llm/references/${referenceId}`,
+      })),
+      links: {
+        self: `/api/llm/playbooks/${playbook.slug}`,
+        ui: `/playbooks/${playbook.slug}`,
+        collection: '/playbooks',
+      },
+    });
+  } catch (error) {
+    console.error('Failed to load playbook detail', error);
+    return jsonError('Failed to load playbook detail');
+  }
 }

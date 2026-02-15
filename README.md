@@ -35,6 +35,23 @@ Open `http://localhost:3000`.
 - `/api/llm/playbooks/[slug]`
 - `/api/llm/references`
 - `/api/llm/references/[id]`
+- `/api/llm/search`
+- `/api/llm/contracts`
+
+## Queryable Retrieval
+
+List endpoints now support machine filters:
+
+- Patterns: `q`, `mode`, `industry`, `category`, `tag`, `limit`
+- Playbooks: `q`, `industry`, `mode`, `limit`
+- References: `q`, `mode`, `limit`
+- Unified search: `/api/llm/search?q=<task>&scope=all`
+
+## Canonical IDs
+
+- Human ID: `1.4`
+- Canonical ID: `patlib.pattern.1.4`
+- Both are accepted by `/api/llm/patterns/[id]`.
 
 ## Content Sources
 
@@ -45,3 +62,12 @@ The parser and knowledge layer live in:
 
 - `src/lib/pattern-parser.ts`
 - `src/lib/library-knowledge.ts`
+
+## Validation
+
+```bash
+npm run check:content
+npm run check:retrieval
+npm run lint
+npm run build
+```

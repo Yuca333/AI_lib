@@ -1,18 +1,23 @@
-# User-Agent: *
+# Pat Lib Online robots policy
+# Last updated: 2026-02-15
+
+User-agent: *
+Allow: /
+Disallow: /_next/
+
+User-agent: GPTBot
 Allow: /
 
-# Focused AI Crawlers
-User-Agent: GPTBot
+User-agent: Claude-Web
 Allow: /
 
-User-Agent: Claude-Web
+User-agent: Google-Extended
 Allow: /
 
-User-Agent: Google-Extended
+User-agent: PerplexityBot
 Allow: /
 
-User-Agent: PerplexityBot
+User-agent: CCBot
 Allow: /
 
-# Sitemap
 Sitemap: https://pat-lib-online.vercel.app/sitemap.xml
